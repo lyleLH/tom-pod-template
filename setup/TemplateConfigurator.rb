@@ -47,7 +47,7 @@ module Pod
 
       loop do
         @message_bank.show_prompt
-        answer = gets.downcase.chomp
+        answer = STDIN.gets.downcase.chomp
 
         answer = "yes" if answer == "y"
         answer = "no" if answer == "n"
@@ -101,39 +101,43 @@ module Pod
 
     #----------------------------------------#
 
+    
     def ensure_carthage_compatibility
-      FileUtils.ln_s('Example/Pods/Pods.xcodeproj', '_Pods.xcodeproj')
+      FileUtils.ln_s("./#{@pod_name}/Example/Pods/Pods.xcodeproj", "./#{@pod_name}/_Pods.xcodeproj")
     end
 
     def run_pod_install
       puts "\nRunning " + "pod install".magenta + " on your new library."
       puts ""
 
-      Dir.chdir("Example") do
+      Dir.chdir("#{@pod_name}/Example") do
         system "pod install"
       end
 
-      `git add Example/#{pod_name}.xcodeproj/project.pbxproj`
+      `git add #{@pod_name}/Example/#{pod_name}.xcodeproj/project.pbxproj`
       `git commit -m "Initial commit"`
     end
 
     def clean_template_files
       ["./**/.gitkeep", "configure", "_CONFIGURE.rb", "README.md", "LICENSE", "templates", "setup", "CODE_OF_CONDUCT.md"].each do |asset|
-        `rm -rf #{asset}`
+        `rm -rf #{@pod_name}/#{asset}`
       end
     end
 
     def replace_variables_in_files
       file_names = ['POD_LICENSE', 'POD_README.md', 'NAME.podspec', '.travis.yml', podfile_path]
       file_names.each do |file_name|
-        text = File.read(file_name)
+        # text = File.read(file_name)
+        text = File.read("#{@pod_name}/#{file_name}")
+        # text = File.read("./#{file_name}")
         text.gsub!("${POD_NAME}", @pod_name)
         text.gsub!("${REPO_NAME}", @pod_name.gsub('+', '-'))
         text.gsub!("${USER_NAME}", user_name)
         text.gsub!("${USER_EMAIL}", user_email)
         text.gsub!("${YEAR}", year)
         text.gsub!("${DATE}", date)
-        File.open(file_name, "w") { |file| file.puts text }
+        # File.open(file_name, "w") { |file| file.puts text }
+        File.open("#{@pod_name}/#{file_name}", "w") { |file| file.puts text }
       end
     end
 
@@ -142,12 +146,13 @@ module Pod
     end
 
     def add_pods_to_podfile
-      podfile = File.read podfile_path
+      podfile = File.read "#{@pod_name}/#{podfile_path}"
       podfile_content = @pods_for_podfile.map do |pod|
         "pod '" + pod + "'"
       end.join("\n    ")
       podfile.gsub!("${INCLUDED_PODS}", podfile_content)
-      File.open(podfile_path, "w") { |file| file.puts podfile }
+      File.open("#{@pod_name}/#{podfile_path}", "w") { |file| file.puts podfile }
+      
     end
 
     def add_line_to_pch line
@@ -172,14 +177,16 @@ module Pod
     end
 
     def rename_template_files
-      FileUtils.mv "POD_README.md", "README.md"
-      FileUtils.mv "POD_LICENSE", "LICENSE"
-      FileUtils.mv "NAME.podspec", "#{pod_name}.podspec"
+      FileUtils.mv "#{@pod_name}/POD_README.md", "#{@pod_name}/README.md"
+      FileUtils.mv "#{@pod_name}/POD_LICENSE", "#{@pod_name}/LICENSE"
+      FileUtils.mv "#{@pod_name}/NAME.podspec", "#{@pod_name}/#{pod_name}.podspec"
     end
 
     def rename_classes_folder
-      FileUtils.mv "Pod", @pod_name
+      # FileUtils.mv "#{@pod_name}/Pod", @pod_name
+      FileUtils.mv "#{@pod_name}/Pod", "#{@pod_name}/#{@pod_name}"
     end
+
 
     def reinitialize_git_repo
       `rm -rf .git`
